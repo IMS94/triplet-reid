@@ -222,7 +222,7 @@ def main():
             except tf.errors.OutOfRangeError:
                 break  # This just indicates the end of the dataset.
 
-        print()
+        print(emb_storage)
         if not args.quiet:
             print("Done with embedding, aggregating augmentations...", flush=True)
 
