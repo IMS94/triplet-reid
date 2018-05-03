@@ -22,6 +22,15 @@ class TriNetReID:
         self.checkpoints = checkpoints
         self.batch_size = batch_size
 
+        # Create the model and an embedding head.
+        self.model = import_module('nets.' + self.model)
+        self.head = import_module('heads.' + self.head)
+
+        self.sess = tf.Session()
+        # Initialize the network/load the checkpoint.
+        self.checkpoint = tf.train.latest_checkpoint(self.checkpoints)
+        print('Using checkpoint: {}'.format(self.checkpoint))
+
     @staticmethod
     def flip_augment(image, pid):
         """ Returns both the original and the horizontal flip of an image. """
@@ -90,63 +99,78 @@ class TriNetReID:
 
         images, _ = dataset.make_one_shot_iterator().get_next()
 
-        # Create the model and an embedding head.
-        model = import_module('nets.' + self.model)
-        head = import_module('heads.' + self.head)
-
-        endpoints, body_prefix = model.endpoints(images, is_training=False)
+        endpoints, body_prefix = self.model.endpoints(images, is_training=False)
         with tf.name_scope('head'):
-            endpoints = head.head(endpoints, self.embed_dim, is_training=False)
+            endpoints = self.head.head(endpoints, self.embed_dim, is_training=False)
 
-        with tf.Session() as sess:
-            # Initialize the network/load the checkpoint.
-            checkpoint = tf.train.latest_checkpoint(self.checkpoints)
-            print('Restoring from checkpoint: {}'.format(checkpoint))
-            tf.train.Saver().restore(sess, checkpoint)
+        tf.train.Saver().restore(self.sess, self.checkpoint)
 
-            # Go ahead and embed the whole dataset, with all augmented versions too.
-            emb_storage = np.zeros((len(crops) * len(modifiers), self.embed_dim), np.float32)
-            for start_idx in count(step=self.batch_size):
-                try:
-                    emb = sess.run(endpoints['emb'])
-                    print('\rEmbedded batch {}-{}/{}'.format(start_idx, start_idx + len(emb), len(emb_storage)),
-                          flush=True, end='')
-                    emb_storage[start_idx:start_idx + len(emb)] = emb
-                except tf.errors.OutOfRangeError:
-                    break  # This just indicates the end of the dataset.
+        # Go ahead and embed the whole dataset, with all augmented versions too.
+        emb_storage = np.zeros((len(crops) * len(modifiers), self.embed_dim), np.float32)
+        for start_idx in count(step=self.batch_size):
+            try:
+                emb = self.sess.run(endpoints['emb'])
+                print('\rEmbedded batch {}-{}/{}'.format(start_idx, start_idx + len(emb), len(emb_storage)),
+                      flush=True, end='')
+                emb_storage[start_idx:start_idx + len(emb)] = emb
+            except tf.errors.OutOfRangeError:
+                break  # This just indicates the end of the dataset.
 
-            print("Done with embedding, aggregating augmentations...", flush=True)
+        print("Done with embedding, aggregating augmentations...", flush=True)
 
-            if len(modifiers) > 1:
-                # Pull out the augmentations into a separate first dimension.
-                emb_storage = emb_storage.reshape(len(crops), len(modifiers), -1)
-                emb_storage = emb_storage.transpose((1, 0, 2))  # (Aug,FID,128D)
+        if len(modifiers) > 1:
+            # Pull out the augmentations into a separate first dimension.
+            emb_storage = emb_storage.reshape(len(crops), len(modifiers), -1)
+            emb_storage = emb_storage.transpose((1, 0, 2))  # (Aug,FID,128D)
 
-                # Aggregate according to the specified parameter.
-                emb_storage = AGGREGATORS[self.aggregator](emb_storage)
-            # print(emb_storage)
-            print(emb_storage.shape)
+            # Aggregate according to the specified parameter.
+            emb_storage = AGGREGATORS[self.aggregator](emb_storage)
+        # print(emb_storage)
+        print(emb_storage.shape)
 
-            return emb_storage
+        return emb_storage
 
 
 if __name__ == '__main__':
     import os
 
-    imgs = []
+    images = []
     dir = "/home/imesha/Documents/Projects/FYP/Tests/re-id-dataset/output"
     for file in os.listdir(dir):
         img = cv2.imread(dir + "/" + file)
-        imgs.append(img)
+        images.append(img)
 
-    imgs = imgs[:200]
+    imgs = images[:100]
 
     re_id = TriNetReID(batch_size=32)
     print("Embedding {} images".format(len(imgs)))
     embeddings = re_id.embed(imgs)
 
     print("Comparing embeddings")
-    for i in range(len(imgs)):
+    for i in range(1):
+        img = imgs[i]
+        similar = []
+        for j in range(len(imgs)):
+            similarity = compare(embeddings[j], embeddings[i])
+            if similarity < 10:
+                similar.append(imgs[j])
+
+        print("Found {} similar images".format(len(similar)))
+        frame = cv2.resize(img, (25, 50))
+        for s in similar:
+            frame = np.hstack((frame, cv2.resize(s, (25, 50))))
+        cv2.imshow("Similar", frame)
+        cv2.waitKey(5000)
+        cv2.destroyAllWindows()
+
+    imgs = images[100:200]
+
+    re_id = TriNetReID(batch_size=32)
+    print("Embedding {} images".format(len(imgs)))
+    embeddings = re_id.embed(imgs)
+
+    print("Comparing embeddings")
+    for i in range(1):
         img = imgs[i]
         similar = []
         for j in range(len(imgs)):
