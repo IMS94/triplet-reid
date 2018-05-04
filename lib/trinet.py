@@ -53,6 +53,8 @@ class TriNetReID:
         return image_resized
 
     def embed(self, crops):
+        tf.reset_default_graph()
+
         # Load the data from the CSV file.
         net_input_size = (256, 128)
         pre_crop_size = (288, 144)
@@ -125,7 +127,6 @@ class TriNetReID:
                 # Aggregate according to the specified parameter.
                 emb_storage = AGGREGATORS[self.aggregator](emb_storage)
             # print(emb_storage)
-            print(emb_storage.shape)
 
             return emb_storage
 
@@ -133,31 +134,39 @@ class TriNetReID:
 if __name__ == '__main__':
     import os
 
-    imgs = []
+    limit = 10
+
+    images = []
     dir = "/home/imesha/Documents/Projects/FYP/Tests/re-id-dataset/output"
     for file in os.listdir(dir):
         img = cv2.imread(dir + "/" + file)
-        imgs.append(img)
+        images.append(img)
 
-    imgs = imgs[:200]
+    imgs = images[:limit]
 
     re_id = TriNetReID(batch_size=32)
     print("Embedding {} images".format(len(imgs)))
     embeddings = re_id.embed(imgs)
 
-    print("Comparing embeddings")
-    for i in range(len(imgs)):
-        img = imgs[i]
-        similar = []
-        for j in range(len(imgs)):
-            similarity = compare(embeddings[j], embeddings[i])
-            if similarity < 10:
-                similar.append(imgs[j])
+    # print("Comparing embeddings")
+    # for i in range(len(imgs)):
+    #     img = imgs[i]
+    #     similar = []
+    #     for j in range(len(imgs)):
+    #         similarity = compare(embeddings[j], embeddings[i])
+    #         if similarity < 10:
+    #             similar.append(imgs[j])
+    #
+    #     print("Found {} similar images".format(len(similar)))
+    #     frame = cv2.resize(img, (25, 50))
+    #     for s in similar:
+    #         frame = np.hstack((frame, cv2.resize(s, (25, 50))))
+    #     cv2.imshow("Similar", frame)
+    #     cv2.waitKey(5000)
+    #     cv2.destroyAllWindows()
 
-        print("Found {} similar images".format(len(similar)))
-        frame = cv2.resize(img, (25, 50))
-        for s in similar:
-            frame = np.hstack((frame, cv2.resize(s, (25, 50))))
-        cv2.imshow("Similar", frame)
-        cv2.waitKey(5000)
-        cv2.destroyAllWindows()
+    imgs = images[limit:limit * 2]
+
+    re_id = TriNetReID(batch_size=32)
+    print("Embedding {} images".format(len(imgs)))
+    embeddings = re_id.embed(imgs)
