@@ -148,25 +148,42 @@ if __name__ == '__main__':
     print("Embedding {} images".format(len(imgs)))
     embeddings = re_id.embed(imgs)
 
-    # print("Comparing embeddings")
-    # for i in range(len(imgs)):
-    #     img = imgs[i]
-    #     similar = []
-    #     for j in range(len(imgs)):
-    #         similarity = compare(embeddings[j], embeddings[i])
-    #         if similarity < 10:
-    #             similar.append(imgs[j])
-    #
-    #     print("Found {} similar images".format(len(similar)))
-    #     frame = cv2.resize(img, (25, 50))
-    #     for s in similar:
-    #         frame = np.hstack((frame, cv2.resize(s, (25, 50))))
-    #     cv2.imshow("Similar", frame)
-    #     cv2.waitKey(5000)
-    #     cv2.destroyAllWindows()
+    print("Comparing embeddings")
+    for i in range(len(imgs)):
+        img = imgs[i]
+        similar = []
+        for j in range(len(imgs)):
+            similarity = compare(embeddings[j], embeddings[i])
+            if similarity < 10:
+                similar.append(imgs[j])
+
+        print("Found {} similar images".format(len(similar)))
+        frame = cv2.resize(img, (25, 50))
+        for s in similar:
+            frame = np.hstack((frame, cv2.resize(s, (25, 50))))
+        cv2.imshow("Similar", frame)
+        cv2.waitKey(2000)
+        cv2.destroyAllWindows()
 
     imgs = images[limit:limit * 2]
 
     re_id = TriNetReID(batch_size=32)
     print("Embedding {} images".format(len(imgs)))
     embeddings = re_id.embed(imgs)
+
+    print("Comparing embeddings")
+    for i in range(len(imgs)):
+        img = imgs[i]
+        similar = []
+        for j in range(len(imgs)):
+            similarity = compare(embeddings[j], embeddings[i])
+            if similarity < 10:
+                similar.append(imgs[j])
+
+        print("Found {} similar images".format(len(similar)))
+        frame = cv2.resize(img, (25, 50))
+        for s in similar:
+            frame = np.hstack((frame, cv2.resize(s, (25, 50))))
+        cv2.imshow("Similar", frame)
+        cv2.waitKey(5000)
+        cv2.destroyAllWindows()
